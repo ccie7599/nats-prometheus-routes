@@ -4,6 +4,7 @@
     "version": "0.0.1",
     "private": true,
     "dependencies": {
+        "node-red": "4.0.2",
         "node-red-contrib-prometheus-exporter": "~1.0.5"
     }
 }
