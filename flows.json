@@ -1,0 +1,383 @@
+[
+    {
+        "id": "f6f2187d.f17ca8",
+        "type": "tab",
+        "label": "prometheus output",
+        "disabled": false,
+        "info": ""
+    },
+    {
+        "id": "d5d70e24802734b9",
+        "type": "tab",
+        "label": "GeoIP Lookup",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "94b4b77fc0f9d626",
+        "type": "prometheus-metric-config",
+        "name": "rtt",
+        "help": "rtt",
+        "labels": "server_name,remote_name,lat,lon",
+        "mtype": "gauge"
+    },                      
+    {
+        "id": "73b8e439d54baf62",
+        "type": "prometheus-metric-config",
+        "name": "routertt",
+        "help": "RTT between cluster nodes",
+        "labels": "server_name, remote_name",
+        "mtype": "gauge"
+    },
+    {
+        "id": "6923f9bb4792c9b9",
+        "type": "prometheus-metric-config",
+        "name": "mtr",
+        "help": "Results of MTR tests by job ",
+        "labels": "job,server_name,hopcount",
+        "mtype": "gauge"
+    },
+    {
+        "id": "b32206ca954669c2",
+        "type": "prometheus-metric-config",
+        "name": "replication_latency",
+        "help": "1 minute average of publish time to subscriber receipt ",
+        "labels": "server_name,lat,lon",
+        "mtype": "gauge"     
+    },
+    {
+        "id": "5f22ea82c27ca7d8",
+        "type": "http request",
+        "z": "f6f2187d.f17ca8",
+        "name": "",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "http://172.17.0.1:8222/routez",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 250,
+        "y": 220,
+        "wires": [
+            [
+                "45ac76bf693bf1f2"
+            ]                
+        ]
+    },
+    {
+        "id": "96b2993cd6b72681",
+        "type": "inject",
+        "z": "f6f2187d.f17ca8",
+        "name": "",
+        "props": [],
+        "repeat": "15",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 210,
+        "y": 180,
+        "wires": [
+            [
+                "5f22ea82c27ca7d8"
+            ]
+        ]
+    },
+    {
+        "id": "45ac76bf693bf1f2",
+        "type": "function",
+        "z": "f6f2187d.f17ca8",
+        "name": "function 3",
+        "func": "// Extract server_name from msg payload\nvar serverName = msg.payload.server_name;\n\n// Initialize an empty array to store remote_name and rtt pairs\nvar remotes = [];\n\n// Iterate over each route in the routes array\nmsg.payload.routes.forEach(function (route) {\n    // Extract remote_name and rtt from each route\n    var remoteName = route.remote_name;\n    var rtt = route.rtt;\n\n    // Push {remote_name, rtt} object to the remotes array\n    remotes.push({\n        remote_name: remoteName,\n        rtt: rtt\n    });\n});\n\n// Construct the output JSON object\nvar output = {server_name: serverName,remotes: remotes};\n\n// Set the output JSON object as the payload of the message\nmsg.payload = output;\n\n// Return the modified message\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 240,
+        "y": 260,
+        "wires": [
+            [                
+                "94fd0f7e14c7ba62"
+            ]
+        ]
+    },
+    {
+        "id": "2087b04b3ac9cffa",
+        "type": "template",
+        "z": "f6f2187d.f17ca8",
+        "name": "",
+        "field": "payload",
+        "fieldType": "msg",
+        "format": "handlebars",
+        "syntax": "mustache",
+        "template": "{\"op\":\"set\",\"val\":{{payload.rtt}},\"labels\":{\"remote_name\":\"{{{payload.remote_name}}}\",\"server_name\":\"{{{global.city}}}\",\"lat\":{{global.lat}},\"lon\":{{global.lon}}}}",
+        "output": "json",
+        "x": 240,
+        "y": 460,
+        "wires": [
+            [
+                "b0ccdc22ad9479d1"
+            ]                
+        ]
+    },
+    {
+        "id": "94fd0f7e14c7ba62",
+        "type": "split",
+        "z": "f6f2187d.f17ca8",
+        "name": "",
+        "splt": "",
+        "spltType": "str",
+        "arraySplt": "3",
+        "arraySpltType": "len",
+        "stream": false,
+        "addname": "",
+        "x": 230,
+        "y": 300,
+        "wires": [
+            [
+                "413f11425a96e533"
+            ]
+        ]
+    },
+    {
+        "id": "413f11425a96e533",
+        "type": "split",
+        "z": "f6f2187d.f17ca8",
+        "name": "",
+        "splt": "\\n",
+        "spltType": "str",
+        "arraySplt": 1,
+        "arraySpltType": "len",
+        "stream": false,
+        "addname": "",
+        "x": 230,
+        "y": 340,
+        "wires": [
+            [
+                "da7ad481ab728f41"
+            ]
+        ]
+    },
+    {
+        "id": "6e657827492206aa",
+        "type": "function",
+        "z": "f6f2187d.f17ca8",
+        "name": "function 4",
+        "func": "// Extract rtt value from the input message\nvar rttString = msg.payload.rtt;\n\n// Remove the quotes and \"ms\" from the rtt value\nvar rttNumeric = parseFloat(rttString.replace(/\"/g, '').replace('ms', ''));\n\n// Update the payload with the numeric rtt value\nmsg.payload.rtt = rttNumeric;\n\n// Return the modified message\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 240,
+        "y": 420,
+        "wires": [
+            [
+                "2087b04b3ac9cffa"
+            ]
+        ]
+    },
+    {
+        "id": "da7ad481ab728f41",
+        "type": "switch",
+        "z": "f6f2187d.f17ca8",
+        "name": "",          
+        "property": "payload.rtt",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "nempty"
+            },
+            {
+                "t": "else"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 2,
+        "x": 230,
+        "y": 380,
+        "wires": [
+            [
+                "6e657827492206aa"
+            ],
+            []
+        ]
+    },
+    {                        
+        "id": "b0ccdc22ad9479d1",
+        "type": "prometheus-exporter",
+        "z": "f6f2187d.f17ca8",
+        "name": "",
+        "metric": "94b4b77fc0f9d626",
+        "x": 250,
+        "y": 500,
+        "wires": []
+    },
+    {
+        "id": "9dae8ae99b9fae21",
+        "type": "change",
+        "z": "d5d70e24802734b9",
+        "name": "Set Global Variables ",
+        "rules": [
+            {
+                "t": "set",
+                "p": "regionName",
+                "pt": "global",
+                "to": "payload.regionName",
+                "tot": "msg"
+            },
+            {                
+                "t": "set",
+                "p": "countryCode",
+                "pt": "global",
+                "to": "payload.countryCode",
+                "tot": "msg"
+            },
+            {
+                "t": "set",
+                "p": "org",
+                "pt": "global",
+                "to": "payload.org",
+                "tot": "msg"
+            },
+            {
+                "t": "set",
+                "p": "city",
+                "pt": "global",
+                "to": "payload.city",
+                "tot": "msg"
+            },
+            {
+                "t": "set",
+                "p": "lat",  
+                "pt": "global",
+                "to": "payload.lat",
+                "tot": "msg",
+                "dc": true
+            },
+            {
+                "t": "set",
+                "p": "lon",
+                "pt": "global",
+                "to": "payload.lon",
+                "tot": "msg"
+            },
+            {
+                "t": "set",
+                "p": "ip",
+                "pt": "global",
+                "to": "payload.query",
+                "tot": "msg"
+            }
+        ],
+        "action": "",
+        "property": "",
+        "from": "",          
+        "to": "",
+        "reg": false,
+        "x": 240,
+        "y": 300,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "9e1f78480b1f66a8",
+        "type": "http request",
+        "z": "d5d70e24802734b9",
+        "name": "GeoIP Lookup",
+        "method": "GET",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "x": 220,
+        "y": 260,            
+        "wires": [
+            [
+                "9dae8ae99b9fae21"
+            ]
+        ]
+    },
+    {
+        "id": "f03f1ef43b690d87",
+        "type": "template",
+        "z": "d5d70e24802734b9",
+        "name": "Format GeoIP Lookup",
+        "field": "url",
+        "fieldType": "msg",
+        "format": "handlebars",
+        "syntax": "mustache",
+        "template": "http://ip-api.com/json/{{payload}}",
+        "output": "str",
+        "x": 240,
+        "y": 220,
+        "wires": [
+            [
+                "9e1f78480b1f66a8"
+            ]                
+        ]
+    },
+    {
+        "id": "1fa622be859256e2",
+        "type": "http request",
+        "z": "d5d70e24802734b9",
+        "name": "Lookup public IP address",
+        "method": "GET",
+        "ret": "txt",
+        "paytoqs": "ignore",
+        "url": "wgetip.com",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "authType": "",
+        "x": 250,
+        "y": 180,
+        "wires": [
+            [
+                "f03f1ef43b690d87"
+            ]
+        ]
+    },                       
+    {
+        "id": "480c0d9e9b198cbb",
+        "type": "inject",
+        "z": "d5d70e24802734b9",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": true,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payloadType": "date",
+        "x": 210,
+        "y": 140,
+        "wires": [           
+            [
+                "1fa622be859256e2"
+            ]
+        ]
+    }
+]
